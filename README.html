@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shamu — The OrcaSlicer API Bridge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Instrument+Serif:ital@0;1&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink:        #0a0d12;
+    --ink2:       #111520;
+    --ink3:       #181d28;
+    --surface:    #1a2035;
+    --glass:      rgba(255,255,255,0.04);
+    --border:     rgba(255,255,255,0.08);
+    --border2:    rgba(255,255,255,0.14);
+    --cyan:       #00e5c8;
+    --cyan-dim:   rgba(0,229,200,0.12);
+    --cyan-glow:  rgba(0,229,200,0.06);
+    --white:      #f0f4ff;
+    --muted:      #6b7a99;
+    --muted2:     #4a5568;
+    --red:        #ff4d6d;
+    --amber:      #ffbe3d;
+    --green:      #3dffa0;
+    --r: 6px;
+    --r2: 12px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--ink);
+    color: var(--white);
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── noise overlay ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 32px 120px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 72px 0 56px;
+    text-align: center;
+    position: relative;
+  }
+
+  .hero-glow {
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 600px; height: 400px;
+    background: radial-gradient(ellipse at center top, rgba(0,229,200,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .logo-wrap {
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 1.5px solid var(--border2);
+    box-shadow: 0 0 0 8px var(--cyan-glow), 0 0 60px rgba(0,229,200,0.15);
+    margin-bottom: 32px;
+    position: relative;
+  }
+
+  .logo-wrap img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: center 15%;
+    transform: scale(1.1);
+  }
+
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(52px, 8vw, 80px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    background: linear-gradient(135deg, #ffffff 30%, var(--cyan) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+  }
+
+  .hero-sub {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 22px;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+    margin-bottom: 40px;
+  }
+
+  .hero-sub span {
+    color: var(--cyan);
+    font-style: normal;
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    background: var(--cyan-dim);
+    padding: 2px 10px;
+    border-radius: 4px;
+    vertical-align: middle;
+    margin: 0 4px;
+  }
+
+  /* ── BADGES ── */
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 48px;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 100px;
+    border: 1px solid var(--border2);
+    background: var(--glass);
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .badge.cyan  { border-color: rgba(0,229,200,0.3); color: var(--cyan); background: var(--cyan-dim); }
+  .badge.green { border-color: rgba(61,255,160,0.3); color: var(--green); background: rgba(61,255,160,0.08); }
+  .badge.amber { border-color: rgba(255,190,61,0.3); color: var(--amber); background: rgba(255,190,61,0.08); }
+
+  .badge-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.8;
+  }
+
+  /* ── TAGLINE BLOCK ── */
+  .tagline-block {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--cyan);
+    border-radius: 0 var(--r2) var(--r2) 0;
+    padding: 24px 32px;
+    margin: 0 0 64px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .tagline-block::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, var(--cyan-glow), transparent);
+    pointer-events: none;
+  }
+
+  .tagline-block p {
+    font-size: 18px;
+    color: rgba(240,244,255,0.85);
+    line-height: 1.6;
+    position: relative;
+  }
+
+  .tagline-block code {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--cyan);
+    background: var(--cyan-dim);
+    padding: 1px 7px;
+    border-radius: 4px;
+  }
+
+  /* ── SECTION HEADERS ── */
+  .section {
+    margin: 64px 0 0;
+  }
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border2), transparent);
+  }
+
+  h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(24px, 4vw, 32px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--white);
+    margin-bottom: 24px;
+  }
+
+  h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--white);
+    margin: 32px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  h3 .method {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  .method.get    { background: rgba(61,255,160,0.15); color: var(--green); border: 1px solid rgba(61,255,160,0.25); }
+  .method.patch  { background: rgba(255,190,61,0.15); color: var(--amber); border: 1px solid rgba(255,190,61,0.25); }
+  .method.ws     { background: rgba(0,229,200,0.15);  color: var(--cyan);  border: 1px solid rgba(0,229,200,0.25); }
+  .method.post   { background: rgba(255,77,109,0.15); color: var(--red);   border: 1px solid rgba(255,77,109,0.25); }
+
+  p {
+    color: rgba(240,244,255,0.7);
+    margin-bottom: 16px;
+    font-size: 15px;
+    line-height: 1.75;
+  }
+
+  a { color: var(--cyan); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── HOW IT WORKS DIAGRAM ── */
+  .flow-diagram {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    align-items: center;
+    gap: 0;
+    margin: 32px 0;
+    background: var(--ink2);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    padding: 28px 24px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .flow-diagram::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  }
+
+  .flow-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+  }
+
+  .flow-icon {
+    width: 52px; height: 52px;
+    border-radius: 12px;
+    border: 1px solid var(--border2);
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+  }
+
+  .flow-icon.highlight {
+    border-color: rgba(0,229,200,0.4);
+    background: var(--cyan-dim);
+    box-shadow: 0 0 20px rgba(0,229,200,0.15);
+  }
+
+  .flow-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--white);
+  }
+
+  .flow-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  .flow-arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 0 16px;
+  }
+
+  .flow-arrow-line {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border2), var(--cyan), var(--border2));
+    position: relative;
+  }
+
+  .flow-arrow-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  /* ── CARDS ── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin: 24px 0;
+  }
+
+  .card {
+    background: var(--ink2);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    padding: 24px;
+    transition: border-color 0.2s, transform 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .card:hover::before { opacity: 1; }
+
+  .card-icon { font-size: 28px; margin-bottom: 12px; display: block; }
+
+  .card h4 {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 8px;
+  }
+
+  .card p {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  /* ── CODE BLOCKS ── */
+  .code-block {
+    background: var(--ink2);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    overflow: hidden;
+    margin: 16px 0 24px;
+    position: relative;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--ink3);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .code-lang {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--cyan);
+  }
+
+  .code-dots {
+    display: flex;
+    gap: 6px;
+  }
+
+  .code-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+
+  .dot-r { background: #ff5f57; }
+  .dot-y { background: #febc2e; }
+  .dot-g { background: #28c840; }
+
+  .code-block pre {
+    padding: 20px 20px;
+    overflow-x: auto;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: rgba(240,244,255,0.85);
+    tab-size: 2;
+  }
+
+  .code-block pre .kw   { color: var(--cyan); }
+  .code-block pre .str  { color: #a8ff78; }
+  .code-block pre .cmt  { color: var(--muted2); font-style: italic; }
+  .code-block pre .num  { color: var(--amber); }
+  .code-block pre .fn   { color: #c792ea; }
+  .code-block pre .key  { color: #82aaff; }
+
+  /* ── TERMINAL BLOCK ── */
+  .terminal {
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    overflow: hidden;
+    margin: 16px 0 24px;
+  }
+
+  .terminal-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: #161b22;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .terminal-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-left: 4px;
+  }
+
+  .terminal pre {
+    padding: 16px 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    line-height: 1.8;
+    color: rgba(240,244,255,0.9);
+  }
+
+  .terminal pre .prompt { color: var(--cyan); user-select: none; }
+  .terminal pre .out    { color: var(--muted); }
+  .terminal pre .ok     { color: var(--green); }
+  .terminal pre .warn   { color: var(--amber); }
+
+  /* ── API TABLE ── */
+  .api-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 32px;
+    font-size: 14px;
+  }
+
+  .api-table th {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 10px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border2);
+  }
+
+  .api-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    color: rgba(240,244,255,0.75);
+    vertical-align: top;
+  }
+
+  .api-table tr:last-child td { border-bottom: none; }
+  .api-table tr:hover td { background: var(--glass); }
+
+  .api-table code {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--white);
+    background: var(--surface);
+    padding: 2px 7px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  /* ── EVENT TABLE ── */
+  .event-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 16px 0 32px;
+  }
+
+  .event-row {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 16px;
+    align-items: start;
+    padding: 14px 16px;
+    background: var(--ink2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+  }
+
+  .event-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--cyan);
+    background: var(--cyan-dim);
+    padding: 3px 10px;
+    border-radius: 4px;
+    display: inline-block;
+    white-space: nowrap;
+  }
+
+  .event-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* ── OS TABLE ── */
+  .os-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 16px 0 32px;
+  }
+
+  .os-card {
+    background: var(--ink2);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    padding: 20px;
+    text-align: center;
+  }
+
+  .os-icon { font-size: 28px; margin-bottom: 10px; display: block; }
+
+  .os-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .os-path {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    word-break: break-all;
+    line-height: 1.5;
+  }
+
+  /* ── SECURITY SECTION ── */
+  .security-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin: 20px 0 32px;
+  }
+
+  .sec-item {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 16px;
+    background: var(--ink2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+  }
+
+  .sec-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .sec-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 4px;
+  }
+
+  .sec-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  /* ── ROADMAP ── */
+  .roadmap {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 20px 0;
+    position: relative;
+    padding-left: 28px;
+  }
+
+  .roadmap::before {
+    content: '';
+    position: absolute;
+    left: 7px; top: 12px; bottom: 12px;
+    width: 1px;
+    background: linear-gradient(180deg, var(--cyan), var(--border), transparent);
+  }
+
+  .roadmap-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 12px 0;
+    position: relative;
+  }
+
+  .roadmap-dot {
+    position: absolute;
+    left: -24px;
+    top: 18px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    border: 1px solid var(--border2);
+    background: var(--ink);
+    flex-shrink: 0;
+  }
+
+  .roadmap-dot.done { background: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+
+  .roadmap-text {
+    font-size: 14px;
+    color: rgba(240,244,255,0.75);
+    line-height: 1.5;
+  }
+
+  .roadmap-text code {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--cyan);
+    background: var(--cyan-dim);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+
+  /* ── DIVIDER ── */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border2), transparent);
+    margin: 56px 0;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    text-align: center;
+    padding: 40px 0 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .footer-brand {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #fff 30%, var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  .footer-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted2);
+    letter-spacing: 0.1em;
+  }
+
+  /* ── INLINE CODE ── */
+  :not(pre) > code {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--cyan);
+    background: var(--cyan-dim);
+    padding: 1px 7px;
+    border-radius: 4px;
+    border: 1px solid rgba(0,229,200,0.2);
+  }
+
+  /* ── INSTALL HIGHLIGHT ── */
+  .install-box {
+    background: linear-gradient(135deg, var(--ink2), var(--surface));
+    border: 1px solid rgba(0,229,200,0.25);
+    border-radius: var(--r2);
+    padding: 28px 32px;
+    margin: 24px 0;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .install-box::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(0,229,200,0.05), transparent 70%);
+    pointer-events: none;
+  }
+
+  .install-cmd {
+    font-family: 'DM Mono', monospace;
+    font-size: 18px;
+    color: var(--white);
+    letter-spacing: 0.02em;
+    margin-bottom: 8px;
+    position: relative;
+  }
+
+  .install-cmd .prompt-char {
+    color: var(--cyan);
+    margin-right: 8px;
+    user-select: none;
+  }
+
+  .install-note {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    margin: 0;
+  }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 0 20px 80px; }
+    .flow-diagram { grid-template-columns: 1fr; gap: 12px; }
+    .flow-arrow { transform: rotate(90deg); padding: 8px 0; }
+    .os-grid { grid-template-columns: 1fr; }
+    .security-grid { grid-template-columns: 1fr; }
+    .event-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ── HERO ── -->
+  <div class="hero">
+    <div class="hero-glow"></div>
+    <div class="logo-wrap">
+      <img src="1775754994779_image.png" alt="Shamu logo — orca whale over a 3D printer">
+    </div>
+    <h1>SHAMU</h1>
+    <p class="hero-sub">The OrcaSlicer API Bridge &nbsp;·&nbsp; <span>localhost:7878</span></p>
+    <div class="badges">
+      <span class="badge cyan"><span class="badge-dot"></span>Python 3.10+</span>
+      <span class="badge green"><span class="badge-dot"></span>MIT License</span>
+      <span class="badge amber"><span class="badge-dot"></span>v0.1.0</span>
+      <span class="badge">REST + WebSocket</span>
+      <span class="badge">macOS · Windows · Linux</span>
+    </div>
+  </div>
+
+  <!-- ── TAGLINE ── -->
+  <div class="tagline-block">
+    <p>OrcaSlicer has no plugin API. Shamu fixes that — without forking or touching a line of C++. It watches OrcaSlicer's config files and wraps them in a clean <code>HTTP + WebSocket</code> API that any language can call. Build addons in Python, JavaScript, Rust — whatever you want.</p>
+  </div>
+
+  <!-- ── HOW IT WORKS ── -->
+  <div class="section">
+    <div class="section-label">Architecture</div>
+    <h2>How it works</h2>
+    <p>OrcaSlicer stores all settings, profiles, and sliced G-code as plain JSON and text files on disk. Shamu watches those files and exposes them as a local API. Your addon never needs to know where OrcaSlicer keeps anything.</p>
+
+    <div class="flow-diagram">
+      <div class="flow-node">
+        <div class="flow-icon">🦈</div>
+        <div class="flow-label">OrcaSlicer</div>
+        <div class="flow-sub">existing app</div>
+      </div>
+      <div class="flow-arrow">
+        <div class="flow-arrow-line"></div>
+        <div class="flow-arrow-label">JSON files</div>
+      </div>
+      <div class="flow-node">
+        <div class="flow-icon highlight">🐋</div>
+        <div class="flow-label">Shamu</div>
+        <div class="flow-sub">localhost:7878</div>
+      </div>
+      <div class="flow-arrow">
+        <div class="flow-arrow-line"></div>
+        <div class="flow-arrow-label">HTTP / WS</div>
+      </div>
+      <div class="flow-node">
+        <div class="flow-icon">🔌</div>
+        <div class="flow-label">Your Addon</div>
+        <div class="flow-sub">any language</div>
+      </div>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <span class="card-icon">📡</span>
+        <h4>File watcher</h4>
+        <p>Detects profile changes and completed slices the instant OrcaSlicer writes to disk.</p>
+      </div>
+      <div class="card">
+        <span class="card-icon">🔐</span>
+        <h4>Token auth</h4>
+        <p>Auto-generated API token stored at <code>~/.config/shamu/token</code> with <code>chmod 600</code>.</p>
+      </div>
+      <div class="card">
+        <span class="card-icon">⚡</span>
+        <h4>Zero forking</h4>
+        <p>Runs alongside OrcaSlicer without modifying a single file in the slicer itself.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── INSTALL ── -->
+  <div class="section">
+    <div class="section-label">Getting Started</div>
+    <h2>Install</h2>
+
+    <div class="install-box">
+      <div class="install-cmd"><span class="prompt-char">$</span>pip install shamu</div>
+      <p class="install-note">requires python 3.10+ &nbsp;·&nbsp; no system dependencies</p>
+    </div>
+
+    <p>Or from source:</p>
+
+    <div class="terminal">
+      <div class="terminal-header">
+        <div class="code-dots"><div class="code-dot dot-r"></div><div class="code-dot dot-y"></div><div class="code-dot dot-g"></div></div>
+        <span class="terminal-title">bash</span>
+      </div>
+      <pre><span class="prompt">$ </span>git clone https://github.com/yourname/shamu
+<span class="prompt">$ </span>cd shamu &amp;&amp; pip install -e .
+<span class="out">[...]</span>
+<span class="ok">Successfully installed shamu-0.1.0</span></pre>
+    </div>
+
+    <h3>Start the bridge</h3>
+
+    <div class="terminal">
+      <div class="terminal-header">
+        <div class="code-dots"><div class="code-dot dot-r"></div><div class="code-dot dot-y"></div><div class="code-dot dot-g"></div></div>
+        <span class="terminal-title">bash</span>
+      </div>
+      <pre><span class="prompt">$ </span>shamu
+<span class="out">[Shamu] Starting on http://127.0.0.1:7878</span>
+<span class="out">[Shamu] Token file:  ~/.config/shamu/token</span>
+<span class="out">[Shamu] API docs:    http://127.0.0.1:7878/docs</span>
+<span class="out">[Shamu] OrcaSlicer: ~/.config/OrcaSlicer</span>
+<span class="ok">[Shamu] Watching: ~/.config/OrcaSlicer</span></pre>
+    </div>
+
+    <p>Open <a href="http://localhost:7878/docs">http://localhost:7878/docs</a> for the interactive API explorer.</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ── API REFERENCE ── -->
+  <div class="section">
+    <div class="section-label">API Reference</div>
+    <h2>Endpoints</h2>
+
+    <!-- status -->
+    <h3><span class="method get">GET</span> /status</h3>
+    <p>Health check. Public endpoint — no token required. Does not reveal settings or token.</p>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">json</span><div class="code-dots"><div class="code-dot dot-r"></div><div class="code-dot dot-y"></div><div class="code-dot dot-g"></div></div></div>
+      <pre>{
+  <span class="key">"shamu"</span>: <span class="str">"ok"</span>,
+  <span class="key">"version"</span>: <span class="str">"0.1.0"</span>,
+  <span class="key">"orca_detected"</span>: <span class="kw">true</span>,
+  <span class="key">"connected_addons"</span>: <span class="num">2</span>
+}</pre>
+    </div>
+
+    <!-- settings GET -->
+    <h3><span class="method get">GET</span> /settings</h3>
+    <p>Returns the merged active profile (process + printer + filament) as a single flat JSON object.</p>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><div class="code-dots"><div class="code-dot dot-r"></div><div class="code-dot dot-y"></div><div class="code-dot dot-g"></div></div></div>
+      <pre>curl http://localhost:7878/settings \
+  -H <span class="str">"X-Shamu-Token: $(cat ~/.config/shamu/token)"</span></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">json</span><div class="code-dots"><div class="code-dot dot-r"></div><div class="code-dot dot-y"></div><div class="code-dot dot-g"></div></div></div>
+      <pre>{
+  <span class="key">"layer_height"</span>: <span class="num">0.2</span>,
+  <span class="key">"infill_density"</span>: <span class="num">15</span>,
+  <span class="key">"print_speed"</span>: <span class="num">200</span>,
+  <span class="key">"nozzle_temperature"</span>: <span class="num">220</span>,
+  <span class="cmt">// ... all active settings</span>
+}</pre>
+    </div>
+
+    <!-- settings PATCH -->
+    <h3><span class="method patch">PATCH</span> /settings</h3>
+    <p>Merge changes into the active process profile. OrcaSlicer picks them up on next slice. Keys must be <code>snake_case</code> identifiers — anything else is rejected.</p>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><div class="code-dots"><div class="code-dot dot-r"></div><div class="code-dot dot-y"></div><div class="code-dot dot-g"></div></div></div>
+      <pre>curl -X PATCH http://localhost:7878/settings \
+  -H <span class="str">"X-Shamu-Token: $(cat ~/.config/shamu/token)"</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{"layer_height": 0.15, "infill_density": 20}'</span></pre>
+    </div>
+
+    <!-- profiles -->
+    <h3><span class="method get">GET</span> /profiles</h3>
+    <p>List all available profiles by type. Returns both user-created and system profiles.</p>
+
+    <h3><span class="method get">GET</span> /profiles/{type}/{name}</h3>
+    <p>Load a specific profile. Valid types: <code>process</code> <code>filament</code> <code>printer</code></p>
+
+    <!-- gcode -->
+    <h3><span class="method get">GET</span> /gcode/latest</h3>
+    <p>Raw G-code from the most recent slice. Add <code>?lines=N</code> to limit output.</p>
+
+    <h3><span class="method get">GET</span> /gcode/stats</h3>
+    <p>Parsed stats from the latest G-code header — no need to scrape comments yourself.</p>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">json</span><div class="code-dots"><div class="code-dot dot-r"></div><div class="code-dot dot-y"></div><div class="code-dot dot-g"></div></div></div>
+      <pre>{
+  <span class="key">"estimated_time_str"</span>: <span class="str">"1h 23m 10s"</span>,
+  <span class="key">"filament_used_g"</span>: <span class="num">42.3</span>,
+  <span class="key">"layer_count"</span>: <span class="num">412</span>,
+  <span class="key">"nozzle_temp"</span>: <span class="num">220</span>,
+  <span class="key">"bed_temp"</span>: <span class="num">65</span>,
+  <span class="key">"filament_type"</span>: <span class="str">"PLA"</span>,
+  <span class="key">"printer_model"</span>: <span class="str">"Bambu P1S"</span>
+}</pre>
+    </div>
+
+    <!-- websocket -->
+    <h3><span class="method ws">WS</span> /events</h3>
+    <p>Real-time event stream. Connect once, receive events as they happen. Pass token as query param.</p>
+
+    <div class="event-list">
+      <div class="event-row">
+        <span class="event-name">shamu_ready</span>
+        <span class="event-desc">Fired on connect. Confirms bridge is running and OrcaSlicer is detected.</span>
+      </div>
+      <div class="event-row">
+        <span class="event-name">slice_complete</span>
+        <span class="event-desc">Fired when OrcaSlicer writes a new <code>.gcode</code> file. Payload includes path and parsed stats.</span>
+      </div>
+      <div class="event-row">
+        <span class="event-name">profile_changed</span>
+        <span class="event-desc">Fired when any profile JSON is saved. Payload includes type and profile name.</span>
+      </div>
+      <div class="event-row">
+        <span class="event-name">settings_changed</span>
+        <span class="event-desc">Fired after a successful <code>PATCH /settings</code> call. Payload includes the applied changes.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ── BUILDING AN ADDON ── -->
+  <div class="section">
+    <div class="section-label">Developer Guide</div>
+    <h2>Building an addon</h2>
+    <p>Any program that can make HTTP requests is a Shamu addon. Read the token from <code>~/.config/shamu/token</code> and include it as <code>X-Shamu-Token</code> on every request.</p>
+
+    <h3>Python</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><div class="code-dot dot-r"></div><div class="code-dot dot-y"></div><div class="code-dot dot-g"></div></div></div>
+      <pre><span class="kw">import</span> httpx
+<span class="kw">from</span> pathlib <span class="kw">import</span> Path
+
+token   = Path(<span class="str">"~/.config/shamu/token"</span>).expanduser().read_text().strip()
+headers = {<span class="str">"X-Shamu-Token"</span>: token}
+
+<span class="cmt"># Read current settings</span>
+settings = httpx.get(<span class="str">"http://localhost:7878/settings"</span>, headers=headers).json()
+<span class="fn">print</span>(<span class="str">f"Layer height: {settings['layer_height']}"</span>)
+
+<span class="cmt"># Apply changes</span>
+httpx.patch(<span class="str">"http://localhost:7878/settings"</span>, headers=headers, json={
+    <span class="str">"layer_height"</span>: <span class="num">0.15</span>,
+    <span class="str">"print_speed"</span>: <span class="num">150</span>,
+})</pre>
+    </div>
+
+    <h3>JavaScript</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">javascript</span><div class="code-dots"><div class="code-dot dot-r"></div><div class="code-dot dot-y"></div><div class="code-dot dot-g"></div></div></div>
+      <pre><span class="kw">const</span> token = <span class="fn">require</span>(<span class="str">'fs'</span>).readFileSync(<span class="str">'~/.config/shamu/token'</span>, <span class="str">'utf8'</span>).trim();
+<span class="kw">const</span> h     = { <span class="str">'X-Shamu-Token'</span>: token };
+
+<span class="cmt">// Get settings</span>
+<span class="kw">const</span> settings = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'http://localhost:7878/settings'</span>, { headers: h }).then(r => r.json());
+
+<span class="cmt">// Listen for slice events</span>
+<span class="kw">const</span> ws = <span class="kw">new</span> <span class="fn">WebSocket</span>(<span class="str">`ws://localhost:7878/events?token=${token}`</span>);
+ws.onmessage = (e) => {
+  <span class="kw">const</span> event = JSON.<span class="fn">parse</span>(e.data);
+  <span class="kw">if</span> (event.event === <span class="str">'slice_complete'</span>) <span class="fn">console</span>.log(<span class="str">'Slice done!'</span>, event.stats);
+};</pre>
+    </div>
+
+    <h3>AI advisor addon (included)</h3>
+    <p>The <code>addons/example_ai_addon/</code> directory ships a working Claude-powered settings advisor. Set <code>ANTHROPIC_API_KEY</code> and run:</p>
+
+    <div class="terminal">
+      <div class="terminal-header">
+        <div class="code-dots"><div class="code-dot dot-r"></div><div class="code-dot dot-y"></div><div class="code-dot dot-g"></div></div>
+        <span class="terminal-title">bash</span>
+      </div>
+      <pre><span class="prompt">$ </span>pip install shamu[addon]
+<span class="prompt">$ </span>python addons/example_ai_addon/addon_ai_advisor.py
+
+<span class="out">Connected to Shamu v0.1.0</span>
+
+<span class="out">What do you want to optimize?</span>
+<span class="prompt">&gt; </span>reduce stringing with PETG
+
+<span class="out">Suggested changes (3 settings):</span>
+<span class="out">  retraction_length: 0.8 → 1.4</span>
+<span class="out">  retraction_speed: 35 → 45</span>
+<span class="out">  print_speed: 200 → 160</span>
+
+<span class="out">Apply? [y/N] </span><span class="ok">y</span>
+<span class="ok">Applied. Re-slice in OrcaSlicer to see the effect.</span></pre>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ── SECURITY ── -->
+  <div class="section">
+    <div class="section-label">Security Model</div>
+    <h2>Security</h2>
+    <p>Shamu is a local service — it only ever binds to <code>127.0.0.1</code> by default. Four hardening measures protect your settings from unauthorized access.</p>
+
+    <div class="security-grid">
+      <div class="sec-item">
+        <span class="sec-icon">🔑</span>
+        <div>
+          <div class="sec-title">Token authentication</div>
+          <p class="sec-desc">Every endpoint requires <code>X-Shamu-Token</code>. Generated with 256 bits of entropy, stored <code>chmod 600</code>.</p>
+        </div>
+      </div>
+      <div class="sec-item">
+        <span class="sec-icon">🛡️</span>
+        <div>
+          <div class="sec-title">CORS restriction</div>
+          <p class="sec-desc">Only <code>null</code> origin allowed — blocks malicious websites from silently calling your local API via browser fetch.</p>
+        </div>
+      </div>
+      <div class="sec-item">
+        <span class="sec-icon">🚫</span>
+        <div>
+          <div class="sec-title">Path traversal prevention</div>
+          <p class="sec-desc">Profile name inputs are sanitized. Characters like <code>../</code> are stripped before any file lookup.</p>
+        </div>
+      </div>
+      <div class="sec-item">
+        <span class="sec-icon">⏱️</span>
+        <div>
+          <div class="sec-title">Constant-time comparison</div>
+          <p class="sec-desc">Token validation uses <code>secrets.compare_digest()</code> to prevent timing attacks on the auth header.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ── CONFIG LOCATIONS ── -->
+  <div class="section">
+    <div class="section-label">Configuration</div>
+    <h2>Config locations</h2>
+    <p>Shamu auto-detects the correct OrcaSlicer config directory per OS. Override with <code>--config-dir /your/path</code>.</p>
+
+    <div class="os-grid">
+      <div class="os-card">
+        <span class="os-icon">🪟</span>
+        <div class="os-name">Windows</div>
+        <div class="os-path">%APPDATA%\OrcaSlicer</div>
+      </div>
+      <div class="os-card">
+        <span class="os-icon">🍎</span>
+        <div class="os-name">macOS</div>
+        <div class="os-path">~/Library/Application Support/OrcaSlicer</div>
+      </div>
+      <div class="os-card">
+        <span class="os-icon">🐧</span>
+        <div class="os-name">Linux</div>
+        <div class="os-path">~/.config/OrcaSlicer</div>
+      </div>
+    </div>
+
+    <h3>CLI options</h3>
+    <table class="api-table">
+      <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>--port</code></td><td><code>7878</code></td><td>Port to listen on</td></tr>
+        <tr><td><code>--host</code></td><td><code>127.0.0.1</code></td><td>Bind address. Setting to <code>0.0.0.0</code> exposes to network — use with caution</td></tr>
+        <tr><td><code>--config-dir</code></td><td>auto-detected</td><td>Path to OrcaSlicer config directory</td></tr>
+        <tr><td><code>--show-token</code></td><td>—</td><td>Print the current API token and exit</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ── ROADMAP ── -->
+  <div class="section">
+    <div class="section-label">Roadmap</div>
+    <h2>What's next</h2>
+
+    <div class="roadmap">
+      <div class="roadmap-item">
+        <div class="roadmap-dot done"></div>
+        <div class="roadmap-text">REST API — read and write active OrcaSlicer settings</div>
+      </div>
+      <div class="roadmap-item">
+        <div class="roadmap-dot done"></div>
+        <div class="roadmap-text">WebSocket events — <code>slice_complete</code>, <code>profile_changed</code>, <code>settings_changed</code></div>
+      </div>
+      <div class="roadmap-item">
+        <div class="roadmap-dot done"></div>
+        <div class="roadmap-text">Token auth + CORS hardening + path traversal prevention</div>
+      </div>
+      <div class="roadmap-item">
+        <div class="roadmap-dot done"></div>
+        <div class="roadmap-text">AI advisor addon powered by Claude</div>
+      </div>
+      <div class="roadmap-item">
+        <div class="roadmap-dot"></div>
+        <div class="roadmap-text"><code>POST /slice</code> — trigger a headless slice via OrcaSlicer CLI</div>
+      </div>
+      <div class="roadmap-item">
+        <div class="roadmap-dot"></div>
+        <div class="roadmap-text">Profile diff endpoint — compare two profiles side-by-side</div>
+      </div>
+      <div class="roadmap-item">
+        <div class="roadmap-dot"></div>
+        <div class="roadmap-text">Addon manifest format — declare dependencies, permissions, and metadata</div>
+      </div>
+      <div class="roadmap-item">
+        <div class="roadmap-dot"></div>
+        <div class="roadmap-text">Submit to OrcaSlicer upstream as a first-party companion tool</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FOOTER ── -->
+  <div class="divider"></div>
+  <div class="footer">
+    <div class="footer-brand">SHAMU</div>
+    <div class="footer-sub">MIT License &nbsp;·&nbsp; The OrcaSlicer API Bridge</div>
+  </div>
+
+</div>
+</body>
+</html>
