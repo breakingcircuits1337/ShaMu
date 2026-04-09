@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "shamu"
+version = "0.1.0"
+description = "Local API bridge for OrcaSlicer addon development"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.29.0",
+    "watchfiles>=0.21.0",
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+addon = ["anthropic>=0.25.0", "websockets>=12.0"]
+
+[project.scripts]
+shamu = "shamu.server:main"
+
+[project.urls]
+Homepage = "https://github.com/yourname/shamu"
+Issues   = "https://github.com/yourname/shamu/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["shamu*"]
