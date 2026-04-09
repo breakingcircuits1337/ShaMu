@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/breakingcircuits1337/ShaMu/main/shamu_complete/shamu/1775754994779_image.png" width="160" alt="Shamu logo"/>
+<img src="https://raw.githubusercontent.com/breakingcircuits1337/ShaMu/main/shamu_complete/shamu/1775754994779_image.png" width="1600" alt="Shamu logo"/>
 
 # SHAMU 🐋
 
